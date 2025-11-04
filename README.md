@@ -1,0 +1,3 @@
+# trabalho4bimBD
+
+Testando o trabalho de BD do 4 bim...
