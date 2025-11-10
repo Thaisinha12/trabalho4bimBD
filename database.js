@@ -67,7 +67,7 @@ const query = async (text, params) => {
   } finally {
     client.release();
   }
-};
+}; 
 
 // Função para transações
 const transaction = async (callback) => {
