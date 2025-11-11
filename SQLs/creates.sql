@@ -19,3 +19,10 @@ CREATE TABLE Cursos (
     departamento VARCHAR(40),
     carga_horaria INT
 );
+
+CREATE TABLE aluno (
+    ra INT PRIMARY KEY,
+    nome VARCHAR(50) NOT NULL,
+    curso VARCHAR(10) NOT NULL,
+    periodo VARCHAR(10) NOT NULL
+);

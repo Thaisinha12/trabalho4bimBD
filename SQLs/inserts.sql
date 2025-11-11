@@ -22,3 +22,9 @@ INSERT INTO Cursos (nome_curso, professor, turno, sala, periodo, departamento, c
 ('Administração', 'Fernanda Costa', 'Noturno', 'C301', 1, 'Gestão', 60),
 ('Gestão de Projetos', 'Fernanda Costa', 'Noturno', 'C301', 1, 'Gestão', 60);
 
+INSERT INTO aluno (ra, nome, curso, periodo) VALUES
+(1001, 'João', 'ADS', 'Noturno'),
+(1002, 'Maria', 'ADS', 'Noturno'),
+(1003, 'Pedro', 'SI', 'Diurno'),
+(1004, 'Ana', 'ADS', 'Noturno'),
+(1005, 'Lucas', 'SI', 'Diurno');
