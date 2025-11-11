@@ -1,18 +1,19 @@
-const { query, testConnection } = require('./database.js');
+  //Importa as funções de conexão com o banco
+  const { query, testConnection } = require('./database.js');
 
-async function verificarDependencias() {
-  // Testa a conexão
-  const conectado = await testConnection();
+  //Função principal é assíncrona (pode usar "await" para esperar consultas sem travar o programa)
+  async function verificarDependencias() {
+  
+  // Testa a conexão com o banco
+  const conectado = await testConnection(); //Pausa a execução até o teste de conexão terminar
   if (!conectado) {
     console.error("Falha ao conectar no banco. Encerrando execução.");
-    process.exit(1);
+    process.exit(1); //Encerra imediatamente o programa (1 indica que deu erro)
   }
 
-  console.log("=================================================");
   console.log(" Descobridor de Dependências Funcionais (DFs) ");
-  console.log("=================================================\n");
 
-  // Descobre automaticamente a primeira tabela do banco
+  // Busca automaticamente o nome da primeira tabela do banco
    const resultadoTabelas = await query(`
      SELECT table_name
      FROM information_schema.tables
@@ -20,10 +21,11 @@ async function verificarDependencias() {
      LIMIT 1;
    `);
 
+  //Pega o nome da primeira tabela do resultado; 'rows' guarda as linhas e '?.' evita erro se estiver vazio
   const nomeTabela = resultadoTabelas.rows[0]?.table_name;
   if (!nomeTabela) {
-    console.error("Nenhuma tabela encontrada no banco!");
-    process.exit(1);
+    console.error("Nenhuma tabela encontrada no banco!"); 
+    process.exit(1); //Encerra imediatamente o programa (1 indica que deu erro)
   }
 
   console.log(`Tabela detectada automaticamente: ${nomeTabela}\n`);
@@ -35,47 +37,59 @@ async function verificarDependencias() {
     WHERE table_name = '${nomeTabela}';
   `);
 
+  //"rows" guarda as linhas da consulta e "map()" cria uma lista só com os nomes das colunas
   const lista_atributos = resultadoColunas.rows.map(r => r.column_name);
   console.log(`Colunas encontradas: ${lista_atributos.join(', ')}\n`);
+  //join(', ') junta os nomes da lista em uma única string, separados por vírgulas
 
-  let vetorA_B = [];
-  let vetorAB_C = [];
-  let vetorABC_D = [];
+  let vetorA_B = []; //Vetor pra armazenar DFs A->B
+  let vetorAB_C = []; //Vetor pra armazenar DFs AB->C
+  let vetorABC_D = []; //Vetor pra armazenar DFs ABC->D
 
-  // ====================== A -> B ======================
+  //Aqui começa a verificação de A->B
     console.log("\n-----------------------  A->B ----------------------");
 
+  //Percorre cada coluna como possível lado direito (B)
   for (const lado_direito of lista_atributos) {
-    for (const lado_esquerdo of lista_atributos) {
+    for (const lado_esquerdo of lista_atributos) { //Percorre cada coluna como possível lado esquerdo (A)
       if (lado_direito === lado_esquerdo) continue;
+      //Evita comparar coluna com ela mesma
 
+      //Consulta pra verificar se é uma DF A->B
       const sql = `
         SELECT ${lado_esquerdo}
         FROM ${nomeTabela}
         GROUP BY ${lado_esquerdo}
         HAVING COUNT(DISTINCT ${lado_direito}) > 1;
       `;
+      //Verifica se um mesmo valor de A gera mais de um valor de B
 
       const resultado = await query(sql);
+      //Executa a consulta
 
       if (resultado.rows.length === 0) {
         vetorA_B.push([lado_esquerdo, lado_direito]);
       }
+      //Se a consulta não encontrou repetições, adiciona a DF no vetorA_B
     }
   }
 
   vetorA_B.sort((a, b) => a[0].localeCompare(b[0]));
+  //Ordena as dependências funcionais em ordem alfabética com base no lado esquerdo (A)
 
-  //A LINHA DE BAIXO É UM TESTE
   vetorA_B = vetorA_B.filter(([a, b]) => a !== b);
-  console.log("Dependências funcionais para A->B  " + vetorA_B.length);
+  // Remove DFs do tipo A->A (redundantes)
+
+  // Exibe as DFs A->B encontradas + a quantidade delas
+  console.log("Dependências funcionais para A->B  " + vetorA_B.length); 
   for (const [a, b] of vetorA_B) {
     console.log(`${a} -> ${b}`);
   }
 
-  // ====================== AB -> C ======================
+  //Aqui começa a verificação de AB->C
   console.log("\n-----------------------  AB->C ----------------------");
 
+  //Cria um conjunto que armazena apenas valores únicos, evitando DFs AB->C repetidas
   const setUnicosAB = new Set();
 
   for (const lado_direito of lista_atributos) {
@@ -84,10 +98,12 @@ async function verificarDependencias() {
 
       for (const lado_esquerdo2 of lista_atributos) {
         if ([lado_esquerdo1, lado_direito].includes(lado_esquerdo2)) continue;
+         // Garante que os lados não se repitam
 
-        // Ordena os dois lados esquerdos alfabeticamente
+        // Ordena alfabeticamente (para evitar duplicações invertidas)
         const esquerdoOrdenado = [lado_esquerdo1, lado_esquerdo2].sort();
 
+        // Verifica se A e B determinam unicamente C
         const sql = `
           SELECT ${esquerdoOrdenado[0]}, ${esquerdoOrdenado[1]}
           FROM ${nomeTabela}
@@ -122,14 +138,16 @@ async function verificarDependencias() {
     console.log(`${a}, ${b} -> ${c}`);
   }
 
-  // ====================== ABC -> D ======================
+  //Aqui começa a verificação de ABC->D
   console.log("\n-----------------------  ABC->D ----------------------");
 
+  //Cria um conjunto que armazena apenas valores únicos, evitando DFs ABC->D repetidas
   const setUnicosABC = new Set();
 
   for (const lado_direito of lista_atributos) {
     for (const lado_esquerdo1 of lista_atributos) {
       if (lado_direito === lado_esquerdo1) continue;
+      // Evita comparar coluna com ela mesma
 
       for (const lado_esquerdo2 of lista_atributos) {
         if ([lado_esquerdo1, lado_direito].includes(lado_esquerdo2)) continue;
@@ -145,7 +163,7 @@ async function verificarDependencias() {
             FROM ${nomeTabela}
             GROUP BY ${esquerdoOrdenado.join(', ')}
             HAVING COUNT(DISTINCT ${lado_direito}) > 1;
-          `;
+          `; // Verifica se A, B e C determinam unicamente D
 
           const resultado = await query(sql);
 
