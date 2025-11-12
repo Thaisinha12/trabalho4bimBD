@@ -131,9 +131,9 @@
 
   //Ordena as dependências encontradas (AB -> C) em ordem alfabética 
   vetorAB_C.sort((a, b) => {
-    const keyA = a[0] + a[1] + a[2]; //Cria uma chave com as letras juntas (ex: "ABC")  
-    const keyB = b[0] + b[1] + b[2]; //O que é isso???????
-    return keyA.localeCompare(keyB); //Compara as chaves em ordem alfabética 
+    const keyA = a[0] + a[1] + a[2]; //Cria uma chave a partir da dependência "a" com as letras juntas (ex: "ABC")  
+    const keyB = b[0] + b[1] + b[2]; // Cria uma "chave" a partir da dependência "b", da mesma forma
+    return keyA.localeCompare(keyB); //Compara as chaves em ordem alfabética: ordem das dependências no vetor
   });
 
   //Remove casos onde o lado direito (C) já aparece no lado esquerdo (A ou B)
@@ -153,19 +153,19 @@
   const setUnicosABC = new Set();
   //Set é uma coleção de valores únicos, que não permite repetições
 
-  for (const lado_direito of lista_atributos) {
-    for (const lado_esquerdo1 of lista_atributos) {
+  for (const lado_direito of lista_atributos) { //Lado direito (C)
+    for (const lado_esquerdo1 of lista_atributos) { //Primeiro lado esquerdo (A)
       if (lado_direito === lado_esquerdo1) continue; //Evita comparar coluna com ela mesma
 
-      for (const lado_esquerdo2 of lista_atributos) {
+      for (const lado_esquerdo2 of lista_atributos) { //Segundo lado esquerdo (B)
         if ([lado_esquerdo1, lado_direito].includes(lado_esquerdo2)) continue; 
         // Pula se B for igual a A ou a C (evita repetição)
 
-        for (const lado_esquerdo3 of lista_atributos) {
+        for (const lado_esquerdo3 of lista_atributos) { //Terceiro lado esquerdo (C)
           if ([lado_esquerdo1, lado_esquerdo2, lado_direito].includes(lado_esquerdo3)) continue;
           //Pula se C já estiver entre A, B ou for igual a D
 
-          // Ordena os três lados esquerdos alfabeticamente
+          //.sort() ordena os nomes das colunas em ordem alfabética
           const esquerdoOrdenado = [lado_esquerdo1, lado_esquerdo2, lado_esquerdo3].sort();
 
           //Consulta que verifica se A, B e C determinam unicamente D
@@ -179,10 +179,15 @@
           //Executa a consulta SQL e espera o banco responder antes de continuar
           const resultado = await query(sql);
 
+          //Se a consulta SQL não encontrou repetições, significa que A, B e C determinam unicamente D
           if (resultado.rows.length === 0) {
+            //Cria uma chave única no formato "A,B,C=>D" para identificar essa dependência
             const chave = `${esquerdoOrdenado.join(',')}=>${lado_direito}`;
+             // Verifica se essa DF ainda não foi registrada no conjunto (evita duplicatas)
             if (!setUnicosABC.has(chave)) {
+              //Adiciona a chave ao conjunto, garantindo que não haja repetições futuras
               setUnicosABC.add(chave);
+              // vetorABC_D armazenará todas as DFs encontradas para exibição posterior
               vetorABC_D.push([...esquerdoOrdenado, lado_direito]);
             }
           }
@@ -191,15 +196,19 @@
     }
   }
 
+  //Ordena as dependências funcionais ABC->D em ordem alfabética
   vetorABC_D.sort((a, b) => {
+    // Cria uma "chave" para cada dependência, juntando os três atributos do lado esquerdo e o lado direito
     const keyA = a[0] + a[1] + a[2] + a[3];
     const keyB = b[0] + b[1] + b[2] + b[3];
+    //Compara as chaves alfabeticamente para definir a ordem final no vetor
     return keyA.localeCompare(keyB);
   });
 
   //Remove casos onde o lado direito (D) já aparece no lado esquerdo (A, B ou C)
   vetorABC_D = vetorABC_D.filter(([a, b, c, d]) => ![a, b, c].includes(d));
 
+  //Exibe as DFs ABC->D encontradas e a quantidade delas
   console.log("Dependências funcionais para ABC->D = " + vetorABC_D.length);
   //Percorre cada dependência ABC->D no vetor e exibe no console no formato "A, B, C -> D"
   for (const [a, b, c, d] of vetorABC_D) {
